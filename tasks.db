@@ -1,0 +1,60 @@
+# app.py
+from flask import Flask, render_template, request, redirect, url_for
+import sqlite3
+import os
+
+app = Flask(__name__)
+
+# Путь к базе данных
+DB = 'tasks.db'
+
+# Инициализация базы данных
+def init_db():
+    with sqlite3.connect(DB) as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                done BOOLEAN NOT NULL DEFAULT 0
+            )
+        ''')
+
+# Главная страница
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        title = request.form['title'].strip()
+        if title:
+            with sqlite3.connect(DB) as conn:
+                conn.execute('INSERT INTO tasks (title, done) VALUES (?, ?)', (title, False))
+        return redirect(url_for('index'))
+
+    # Получаем все задачи
+    with sqlite3.connect(DB) as conn:
+        cur = conn.cursor()
+        cur.execute('SELECT id, title, done FROM tasks ORDER BY id')
+        tasks = cur.fetchall()
+
+    return render_template('index.html', tasks=tasks)
+
+# Маршрут для отметки задачи как выполненной
+@app.route('/toggle/<int:task_id>')
+def toggle_task(task_id):
+    with sqlite3.connect(DB) as conn:
+        cur = conn.cursor()
+        cur.execute('SELECT done FROM tasks WHERE id = ?', (task_id,))
+        done = cur.fetchone()
+        if done:
+            conn.execute('UPDATE tasks SET done = ? WHERE id = ?', (not done[0], task_id))
+    return redirect(url_for('index'))
+
+# Маршрут для удаления задачи
+@app.route('/delete/<int:task_id>')
+def delete_task(task_id):
+    with sqlite3.connect(DB) as conn:
+        conn.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+    return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True, host='0.0.0.0', port=5000)
