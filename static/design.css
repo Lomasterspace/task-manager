@@ -1,0 +1,78 @@
+/* static/design.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #f9fafb;
+  --bg-muted: #e5e7eb;
+  --border: #d1d5da;
+  --primary: #0070f3;
+  --primary-hover: #005bb5;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --radius: 0.5rem;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* Кнопки */
+.btn {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: var(--radius);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn:hover {
+  background-color: var(--primary-hover);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+/* Карточки */
+.card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+/* Текстовые элементы */
+.text-sm { font-size: 0.875rem; }
+.text-base { font-size: 1rem; }
+.text-lg { font-size: 1.125rem; }
+.font-bold { font-weight: 600; }
+.text-gray-500 { color: var(--text-muted); }
+.text-gray-400 { color: #9ca3af; }
+
+/* Списки */
+.list-group-item {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Иконки */
+.svg-icon {
+  width: 1em;
+  height: 1em;
+}

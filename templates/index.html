@@ -1,56 +1,126 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Таск-менеджер</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Менеджер задач</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='design.css') }}">
 </head>
-<body class="bg-light">
-<div class="container mt-5">
-    <h1 class="text-center mb-4">📝 Мой Таск-менеджер</h1>
-    <p class="text-end"><a href="/logout" class="btn btn-sm btn-outline-secondary">Выйти</a></p>
-
-    <form method="POST" enctype="multipart/form-data" class="mb-4">
-        <div class="input-group mb-2">
-            <input type="text" name="title" class="form-control" placeholder="Новая задача..." required>
-            <input type="file" name="file" class="form-control">
-            <button type="submit" class="btn btn-success">Добавить</button>
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Заголовок -->
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">📋 Менеджер задач</h1>
+            <p class="text-gray-600 mt-2">Организуйте свои задачи и отслеживайте прогресс</p>
         </div>
-        <div class="row">
-            <div class="col-md-4">
-                <select name="priority" class="form-select">
-                    <option value="low">Низкий</option>
-                    <option value="medium">Средний</option>
-                    <option value="high">Высокий</option>
-                </select>
-            </div>
-            <div class="col-md-4">
-                <input type="datetime-local" name="due_date" class="form-control">
-            </div>
-        </div>
-    </form>
 
-    <ul class="list-group">
-        {% for task in tasks %}
-        <li class="list-group-item {% if task[2] %}list-group-item-success{% endif %}">
-            <div class="d-flex justify-content-between">
-                <div>
-                    <input class="form-check-input me-2" type="checkbox" onchange="window.location.href='/toggle/{{ task[0] }}'" {% if task[2] %}checked{% endif %}>
-                    <strong>{{ task[1] }}</strong>
-                    <span class="badge bg-{{ 'danger' if task[3]=='high' else 'warning' if task[3]=='medium' else 'secondary' }} ms-1">{{ task[3] }}</span>
-                    {% if task[4] %}<small class="text-muted ms-2">до {{ task[4] }}</small>{% endif %}
-                    {% if task[5] %}<a href="/download/{{ task[0] }}" class="ms-2 text-info">📎 {{ task[5] }}</a>{% endif %}
+        <!-- Статистика -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-lg shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-500">Всего задач</div>
+                    <div class="w-6 h-6 bg-blue-100 rounded flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
                 </div>
-                <a href="/delete/{{ task[0] }}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                <div class="text-2xl font-bold mt-1">{{ tasks|length }}</div>
             </div>
-        </li>
-        {% else %}
-        <li class="list-group-item text-center text-muted">Нет задач</li>
-        {% endfor %}
-    </ul>
 
-    <hr>
-    <p><a href="/messages" class="btn btn-primary">💬 Перейти в чат</a></p>
-</div>
+            <div class="bg-white p-4 rounded-lg shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-500">Активных</div>
+                    <div class="w-6 h-6 bg-orange-100 rounded flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-bold mt-1">{{ tasks|selectattr('2', '==', False)|list|length }}</div>
+            </div>
+
+            <div class="bg-white p-4 rounded-lg shadow-sm border">
+                <div class="flex items-center justify-between">
+                    <div class="text-sm text-gray-500">Выполнено</div>
+                    <div class="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-2xl font-bold mt-1">{{ tasks|selectattr('2', '==', True)|list|length }}</div>
+            </div>
+        </div>
+
+        <!-- Кнопка создания задачи -->
+        <div class="mb-6">
+            <button class="bg-black text-white px-6 py-2 rounded-md font-medium flex items-center gap-2 hover:bg-gray-800 transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Создать задачу
+            </button>
+        </div>
+
+        <!-- Фильтры и сортировка -->
+        <div class="bg-white p-4 rounded-lg shadow-sm border mb-6">
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button class="px-4 py-2 bg-black text-white rounded-md text-sm font-medium">Все {{ tasks|length }}</button>
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium">Активные {{ tasks|selectattr('2', '==', False)|list|length }}</button>
+                <button class="px-4 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium">Выполненные {{ tasks|selectattr('2', '==', True)|list|length }}</button>
+            </div>
+            <div class="flex justify-end">
+                <div class="relative">
+                    <select class="appearance-none bg-gray-100 border border-gray-300 rounded-md px-3 py-2 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option>По дате создания</option>
+                        <option>По приоритету</option>
+                        <option>По сроку</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Список задач -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border">
+            {% if tasks %}
+                <ul class="space-y-3">
+                    {% for task in tasks %}
+                    <li class="border-b pb-3 last:border-b-0">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" onchange="window.location.href='/toggle/{{ task[0] }}'" {% if task[2] %}checked{% endif %}>
+                                <span class="font-medium">{{ task[1] }}</span>
+                                {% if task[3] %}
+                                    <span class="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                                        {{ task[3].capitalize() }}
+                                    </span>
+                                {% endif %}
+                                {% if task[4] %}
+                                    <small class="text-gray-500">⏰ {{ task[4] }}</small>
+                                {% endif %}
+                            </div>
+                            <a href="/delete/{{ task[0] }}" class="text-red-500 hover:text-red-700 text-sm">Удалить</a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="text-center py-12">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    <p class="text-gray-500 mb-2">Нет задач</p>
+                    <p class="text-gray-400 text-sm">Создайте свою первую задачу, чтобы начать</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </body>
 </html>
