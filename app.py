@@ -129,13 +129,12 @@ def init_db():
     # =====================================================================
 
     # Колонки для users
-       cur.execute('''
+    cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'executor';
     ''')
     cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
     ''')
-
     # Колонки для tasks
     cur.execute('''
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
