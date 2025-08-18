@@ -122,6 +122,11 @@ def init_db():
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
     ''')
 
+    # Добавляем колонку priority, если её нет
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'low';
+    ''')
+
     # Добавляем колонку role, если её нет
     cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'executor';
