@@ -7,7 +7,7 @@ from psycopg2.extras import DictCursor
 app = Flask(__name__)
 
 # Получаем URL базы данных из переменной окружения
-DATABASE_URL = os.environ.get('DATABASE_URL', 'dbname=taskmanager')
+DATABASE_URL = os.environ['DATABASE_URL']  # Прямое использование, без fallback
 
 def get_db_connection():
     conn = psycopg2.connect(DATABASE_URL, sslmode='require')
@@ -40,8 +40,9 @@ def index():
 
     # Получаем задачи
     conn = get_db_connection()
-    conn.cursor().execute('SELECT id, title, done FROM tasks ORDER BY id')
-    tasks = conn.cursor().fetchall()
+    cur = conn.cursor()
+    cur.execute('SELECT id, title, done FROM tasks ORDER BY id')
+    tasks = cur.fetchall()
     conn.close()
 
     return render_template('index.html', tasks=tasks)
@@ -61,7 +62,8 @@ def toggle_task(task_id):
 @app.route('/delete/<int:task_id>')
 def delete_task(task_id):
     conn = get_db_connection()
-    conn.cursor().execute('DELETE FROM tasks WHERE id = %s', (task_id,))
+    cur = conn.cursor()
+    cur.execute('DELETE FROM tasks WHERE id = %s', (task_id,))
     conn.commit()
     conn.close()
     return redirect(url_for('index'))
