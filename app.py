@@ -117,26 +117,21 @@ def init_db():
            );
        ''')
 
-    # Добавляем колонку status, если её нет
-    cur.execute('''
-        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
-    ''')
-
-    # Добавляем колонку priority, если её нет
-    cur.execute('''
-        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'low';
-    ''')
-
-    # Добавляем колонку role, если её нет
     cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'executor';
     ''')
-
-    # Добавляем колонку manager_id, если её нет
     cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
     ''')
-
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
+    ''')
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'low';
+    ''')
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
+    ''')
     # Прикреплённые файлы
     cur.execute('''
            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS file_data BYTEA;
