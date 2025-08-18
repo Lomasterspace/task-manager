@@ -6,7 +6,7 @@ import psycopg2
 app = Flask(__name__)
 
 # Обязательно используем DATABASE_URL из Render
-DATABASE_URL = os.environ['postgresql://task_db_1z0t_user:eXzT0ZLniduv5p0ZLcoWPeLJQzdIKdLp@dpg-d2ev2pqdbo4c738tj8e0-a.frankfurt-postgres.render.com/task_db_1z0t']  # Без fallback
+DATABASE_URL = os.environ['DATABASE_URL']  # Без fallback
 
 def get_db_connection():
     # Подключаемся к PostgreSQL с SSL
