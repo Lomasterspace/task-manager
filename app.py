@@ -2,29 +2,29 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
 import psycopg2
-from psycopg2.extras import DictCursor
 
 app = Flask(__name__)
 
-# Получаем URL базы данных из переменной окружения
-DATABASE_URL = os.environ['DATABASE_URL']  # Прямое использование, без fallback
+# Обязательно используем DATABASE_URL из Render
+DATABASE_URL = os.environ['postgresql://task_db_1z0t_user:eXzT0ZLniduv5p0ZLcoWPeLJQzdIKdLp@dpg-d2ev2pqdbo4c738tj8e0-a.frankfurt-postgres.render.com/task_db_1z0t']  # Без fallback
 
 def get_db_connection():
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-    return conn
+    # Подключаемся к PostgreSQL с SSL
+    return psycopg2.connect(DATABASE_URL, sslmode='require')
 
-# Инициализация базы данных
+# Создаём таблицу при запуске
 def init_db():
     conn = get_db_connection()
-    with conn.cursor() as cur:
-        cur.execute('''
-            CREATE TABLE IF NOT EXISTS tasks (
-                id SERIAL PRIMARY KEY,
-                title TEXT NOT NULL,
-                done BOOLEAN NOT NULL DEFAULT FALSE
-            );
-        ''')
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            done BOOLEAN NOT NULL DEFAULT FALSE
+        );
+    ''')
     conn.commit()
+    cur.close()
     conn.close()
 
 @app.route('/', methods=['GET', 'POST'])
@@ -36,14 +36,16 @@ def index():
             cur = conn.cursor()
             cur.execute('INSERT INTO tasks (title, done) VALUES (%s, %s)', (title, False))
             conn.commit()
+            cur.close()
             conn.close()
-        return redirect('/')
+        return redirect(url_for('index'))
 
-    # Получаем задачи
+    # Получаем все задачи
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('SELECT id, title, done FROM tasks ORDER BY id')
     tasks = cur.fetchall()
+    cur.close()
     conn.close()
 
     return render_template('index.html', tasks=tasks)
@@ -54,9 +56,10 @@ def toggle_task(task_id):
     cur = conn.cursor()
     cur.execute('SELECT done FROM tasks WHERE id = %s', (task_id,))
     done = cur.fetchone()
-    if done:
+    if done is not None:
         cur.execute('UPDATE tasks SET done = %s WHERE id = %s', (not done[0], task_id))
     conn.commit()
+    cur.close()
     conn.close()
     return redirect(url_for('index'))
 
@@ -66,9 +69,12 @@ def delete_task(task_id):
     cur = conn.cursor()
     cur.execute('DELETE FROM tasks WHERE id = %s', (task_id,))
     conn.commit()
+    cur.close()
     conn.close()
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
     init_db()
-    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    # Render сам укажет PORT, по умолчанию 10000
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
