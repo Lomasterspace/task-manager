@@ -121,12 +121,15 @@ def init_db():
             created_at TIMESTAMP DEFAULT NOW()
         );
     ''')
+    cur.execute('''
+           ALTER TABLE projects ADD COLUMN IF NOT EXISTS created_by INTEGER REFERENCES users(id);
+       ''')
 
     # 2. Добавляем колонки, если их нет (для совместимости с старыми данными)
     # =====================================================================
 
     # Колонки для users
-    cur.execute('''
+       cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'executor';
     ''')
     cur.execute('''
