@@ -30,99 +30,110 @@ def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Пользователи с ролями и иерархией
+    # 1. Создаём таблицы (если ещё не созданы)
+    # =======================================
+
+    # Пользователи
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
-            role TEXT NOT NULL DEFAULT 'executor',
+            role TEXT NOT NULL DEFAULT 'executor', -- 'admin', 'manager', 'executor'
             manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             created_at TIMESTAMP DEFAULT NOW()
         );
     ''')
 
-    # Проекты
-    cur.execute('''
-           CREATE TABLE IF NOT EXISTS projects (
-               id SERIAL PRIMARY KEY,
-               name TEXT NOT NULL,
-               description TEXT,
-               manager_id INTEGER REFERENCES users(id),
-               created_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
-
     # Задачи
     cur.execute('''
-           CREATE TABLE IF NOT EXISTS tasks (
-               id SERIAL PRIMARY KEY,
-               title TEXT NOT NULL,
-               description TEXT,
-               status TEXT NOT NULL DEFAULT 'new', -- 'new', 'in_progress', 'done'
-               priority TEXT NOT NULL DEFAULT 'low', -- 'low', 'medium', 'high'
-               due_date TIMESTAMP,
-               created_by INTEGER REFERENCES users(id),
-               assigned_to INTEGER REFERENCES users(id),
-               project_id INTEGER REFERENCES projects(id),
-               created_at TIMESTAMP DEFAULT NOW(),
-               updated_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT NOT NULL DEFAULT 'new', -- 'new', 'in_progress', 'done'
+            priority TEXT NOT NULL DEFAULT 'low', -- 'low', 'medium', 'high'
+            due_date TIMESTAMP,
+            created_by INTEGER REFERENCES users(id),
+            assigned_to INTEGER REFERENCES users(id),
+            project_id INTEGER REFERENCES projects(id),
+            file_data BYTEA,
+            file_name TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
 
-    # Комментарии к задачам
+    # Проекты
     cur.execute('''
-           CREATE TABLE IF NOT EXISTS comments (
-               id SERIAL PRIMARY KEY,
-               task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
-               user_id INTEGER REFERENCES users(id),
-               content TEXT NOT NULL,
-               created_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
+        CREATE TABLE IF NOT EXISTS projects (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            manager_id INTEGER REFERENCES users(id),
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
 
-    # История изменений задач
+    # Комментарии
     cur.execute('''
-           CREATE TABLE IF NOT EXISTS task_history (
-               id SERIAL PRIMARY KEY,
-               task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
-               user_id INTEGER REFERENCES users(id),
-               action TEXT NOT NULL, -- 'created', 'assigned', 'status_changed', 'priority_changed'
-               details TEXT,
-               created_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
+        CREATE TABLE IF NOT EXISTS comments (
+            id SERIAL PRIMARY KEY,
+            task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id),
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
+
+    # История изменений
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS task_history (
+            id SERIAL PRIMARY KEY,
+            task_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE,
+            user_id INTEGER REFERENCES users(id),
+            action TEXT NOT NULL, -- 'created', 'assigned', 'status_changed'
+            details TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
 
     # Уведомления
     cur.execute('''
-           CREATE TABLE IF NOT EXISTS notifications (
-               id SERIAL PRIMARY KEY,
-               user_id INTEGER REFERENCES users(id),
-               message TEXT NOT NULL,
-               is_read BOOLEAN NOT NULL DEFAULT FALSE,
-               link TEXT, -- например, '/task/5'
-               created_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
+        CREATE TABLE IF NOT EXISTS notifications (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id),
+            message TEXT NOT NULL,
+            is_read BOOLEAN NOT NULL DEFAULT FALSE,
+            link TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
 
     # Переписка
     cur.execute('''
-           CREATE TABLE IF NOT EXISTS messages (
-               id SERIAL PRIMARY KEY,
-               sender_id INTEGER REFERENCES users(id),
-               receiver_id INTEGER REFERENCES users(id),
-               content TEXT NOT NULL,
-               task_id INTEGER REFERENCES tasks(id),
-               created_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
+        CREATE TABLE IF NOT EXISTS messages (
+            id SERIAL PRIMARY KEY,
+            sender_id INTEGER REFERENCES users(id),
+            receiver_id INTEGER REFERENCES users(id),
+            content TEXT NOT NULL,
+            task_id INTEGER REFERENCES tasks(id),
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
 
+    # 2. Добавляем колонки, если их нет (для совместимости с старыми данными)
+    # =====================================================================
+
+    # Колонки для users
     cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'executor';
     ''')
     cur.execute('''
         ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
     ''')
+
+    # Колонки для tasks
     cur.execute('''
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'new';
     ''')
@@ -132,11 +143,24 @@ def init_db():
     cur.execute('''
         ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
     ''')
-    # Прикреплённые файлы
     cur.execute('''
-           ALTER TABLE tasks ADD COLUMN IF NOT EXISTS file_data BYTEA;
-           ALTER TABLE tasks ADD COLUMN IF NOT EXISTS file_name TEXT;
-       ''')
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS assigned_to INTEGER REFERENCES users(id);
+    ''')
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id);
+    ''')
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS file_data BYTEA;
+    ''')
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS file_name TEXT;
+    ''')
+    cur.execute('''
+        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+    ''')
+
+    # 3. Фиксируем изменения
+    # =======================
 
     conn.commit()
     cur.close()
