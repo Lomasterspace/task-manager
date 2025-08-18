@@ -32,15 +32,15 @@ def init_db():
 
     # Пользователи с ролями и иерархией
     cur.execute('''
-           CREATE TABLE IF NOT EXISTS users (
-               id SERIAL PRIMARY KEY,
-               username TEXT UNIQUE NOT NULL,
-               password TEXT NOT NULL,
-               role TEXT NOT NULL DEFAULT 'executor', -- 'admin', 'manager', 'executor'
-               manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-               created_at TIMESTAMP DEFAULT NOW()
-           );
-       ''')
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'executor',
+            manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+    ''')
 
     # Проекты
     cur.execute('''
@@ -116,6 +116,16 @@ def init_db():
                created_at TIMESTAMP DEFAULT NOW()
            );
        ''')
+
+    # Добавляем колонку role, если её нет
+    cur.execute('''
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'executor';
+    ''')
+
+    # Добавляем колонку manager_id, если её нет
+    cur.execute('''
+        ALTER TABLE users ADD COLUMN IF NOT EXISTS manager_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    ''')
 
     # Прикреплённые файлы
     cur.execute('''
