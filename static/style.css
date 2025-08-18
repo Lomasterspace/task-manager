@@ -2,6 +2,15 @@
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-.container {
-    max-width: 600px;
+
+.list-group-item {
+    transition: background-color 0.2s;
 }
+
+.badge {
+    font-size: 0.8em;
+}
+
+.bg-low { background-color: #d1ecf1; }
+.bg-medium { background-color: #fff3cd; }
+.bg-high { background-color: #f8d7da; }
