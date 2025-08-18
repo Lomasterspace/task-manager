@@ -33,10 +33,11 @@ def index():
         title = request.form['title'].strip()
         if title:
             conn = get_db_connection()
-            conn.cursor().execute('INSERT INTO tasks (title, done) VALUES (%s, %s)', (title, False))
+            cur = conn.cursor()
+            cur.execute('INSERT INTO tasks (title, done) VALUES (%s, %s)', (title, False))
             conn.commit()
             conn.close()
-        return redirect(url_for('index'))
+        return redirect('/')
 
     # Получаем задачи
     conn = get_db_connection()
