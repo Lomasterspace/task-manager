@@ -123,95 +123,9 @@ def init_db():
            ALTER TABLE tasks ADD COLUMN IF NOT EXISTS file_name TEXT;
        ''')
 
-    # Создаём таблицу users
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        );
-    ''')
-
-    # Создаём таблицу tasks
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS tasks (
-            id SERIAL PRIMARY KEY,
-            title TEXT NOT NULL,
-            done BOOLEAN NOT NULL DEFAULT FALSE,
-            user_id INTEGER REFERENCES users(id),
-            file_data BYTEA,
-            file_name TEXT,
-            due_date TIMESTAMP
-        );
-    ''')
-
-    # Добавляем колонку priority
-    cur.execute('''
-        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS priority TEXT NOT NULL DEFAULT 'low';
-    ''')
-
-    # Добавляем колонку due_date (на всякий случай)
-    cur.execute('''
-        ALTER TABLE tasks ADD COLUMN IF NOT EXISTS due_date TIMESTAMP;
-    ''')
-
-    # 🔥 Создаём таблицу messages
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS messages (
-            id SERIAL PRIMARY KEY,
-            sender_id INTEGER REFERENCES users(id),
-            receiver_id INTEGER REFERENCES users(id),
-            content TEXT NOT NULL,
-            task_id INTEGER REFERENCES tasks(id),
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-    ''')
-
     conn.commit()
     cur.close()
     conn.close()
-
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    if request.method == 'POST':
-        title = request.form['title'].strip()
-        priority = request.form.get('priority', 'low')
-        due_date = request.form.get('due_date') or None
-        file_data = None
-        file_name = None
-
-        if 'file' in request.files:
-            file = request.files['file']
-            if file and file.filename != '' and '.' in file.filename:
-                file_data = file.read()
-                file_name = secure_filename(file.filename)
-
-        if title:
-            conn = get_db_connection()
-            cur = conn.cursor()
-            cur.execute('''
-                INSERT INTO tasks (title, done, priority, due_date, user_id, file_data, file_name)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ''', (title, False, priority, due_date, session['user_id'], file_data, file_name))
-            conn.commit()
-            cur.close()
-            conn.close()
-        return redirect(url_for('index'))
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('''
-        SELECT id, title, done, priority, due_date, file_name FROM tasks 
-        WHERE user_id = %s ORDER BY id
-    ''', (session['user_id'],))
-    tasks = cur.fetchall()
-    cur.close()
-    conn.close()
-
-    return render_template('index.html', tasks=tasks)
 
 @app.route('/toggle/<int:task_id>')
 def toggle_task(task_id):
@@ -261,12 +175,14 @@ def login():
         password = request.form['password']
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('SELECT id, password FROM users WHERE username = %s', (username,))
+        cur.execute('SELECT id, password, role FROM users WHERE username = %s', (username,))
         user = cur.fetchone()
         cur.close()
         conn.close()
+
         if user and user[1] == password:
             session['user_id'] = user[0]
+            session['role'] = user[2]  # Сохраняем роль
             return redirect(url_for('index'))
         flash("Неверный логин или пароль.")
     return render_template('login.html')
@@ -379,15 +295,40 @@ def index():
     # Получаем задачи (с фильтрацией)
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # Если исполнитель — видит только назначенные ему задачи
+    # Если менеджер/админ — видит свои и назначенные
     if session['role'] == 'executor':
-        cur.execute('SELECT ... FROM tasks WHERE assigned_to = %s', (session['user_id'],))
+        cur.execute('''
+            SELECT id, title, status, priority, due_date, file_name FROM tasks 
+            WHERE assigned_to = %s ORDER BY due_date
+        ''', (session['user_id'],))
     else:
-        cur.execute('SELECT ... FROM tasks WHERE created_by = %s OR assigned_to = %s', (session['user_id'], session['user_id']))
+        cur.execute('''
+            SELECT id, title, status, priority, due_date, file_name FROM tasks 
+            WHERE created_by = %s OR assigned_to = %s ORDER BY due_date
+        ''', (session['user_id'], session['user_id']))
+
     tasks = cur.fetchall()
     cur.close()
     conn.close()
 
-    return render_template('index.html', tasks=tasks)
+    # Получаем проекты и команду для формы
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT id, name FROM projects WHERE manager_id = %s OR created_by = %s", (session['user_id'], session['user_id']))
+    projects = cur.fetchall()
+
+    if session['role'] == 'manager':
+        cur.execute("SELECT id, username FROM users WHERE manager_id = %s", (session['user_id'],))
+    else:
+        cur.execute("SELECT id, username FROM users WHERE role = 'executor'")
+    team = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return render_template('index.html', tasks=tasks, projects=projects, team=team)
 
 @app.route('/messages')
 def messages():
